@@ -1,0 +1,180 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #13233f;
+  background: #f4f7fc;
+}
+
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+header h1 {
+  font-size: 22px;
+  margin: 0 0 4px;
+}
+
+header p {
+  color: #4a5a78;
+  margin: 0 0 28px;
+  font-size: 13.5px;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e3e8f2;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+
+.card h2 {
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+
+.card .hint {
+  color: #7a8aa8;
+  font-size: 12.5px;
+  margin: 0 0 16px;
+}
+
+.templates {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.templates button {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid #d7deeb;
+  background: #f8fafd;
+  color: #13233f;
+  cursor: pointer;
+}
+
+.templates button:hover {
+  background: #eef2f9;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #7a8aa8;
+  padding: 6px 8px;
+  border-bottom: 1px solid #eef1f6;
+}
+
+td {
+  padding: 8px;
+  border-bottom: 1px solid #f2f4f8;
+  font-size: 13px;
+}
+
+select,
+input[type="text"] {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #d7deeb;
+  background: #ffffff;
+  color: #13233f;
+}
+
+select {
+  cursor: pointer;
+}
+
+.term-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.term-form input[type="text"] {
+  flex: 1;
+  min-width: 140px;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #4a5a78;
+}
+
+.add-btn {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #13233f;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.add-btn:hover {
+  background: #1c3357;
+}
+
+.remove-btn {
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: none;
+  background: #ffe1e1;
+  color: #a4121a;
+  cursor: pointer;
+}
+
+.remove-btn:hover {
+  background: #ffd0d0;
+}
+
+.empty {
+  color: #7a8aa8;
+  font-size: 12.5px;
+  padding: 8px 0;
+}
+
+.saved-pill {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #1a7a3e;
+  background: #e2f6ea;
+  padding: 4px 10px;
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.saved-pill.visible {
+  opacity: 1;
+}
