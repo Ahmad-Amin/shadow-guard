@@ -1,14 +1,14 @@
 import { runDetection } from "../detectors";
 import { PlaceholderSession } from "../redaction/placeholders";
-import { getSettings, recordActivity } from "../policy/storage";
-import type { ActivityEvent, Category } from "../types";
+import { getCachedSettings, recordActivity } from "../policy/storage";
+import type { ActivityEvent, Category, DetectionResult, PolicyAction } from "../types";
 import type { SiteAdapter } from "./adapters/types";
 import { resolveEffectiveAction } from "./policyResolution";
 import { showReviewPanel } from "./ui/reviewPanel";
+import { showToast } from "./ui/toast";
 
 export function attachInterception(adapter: SiteAdapter, session: PlaceholderSession): () => void {
   let allowNextSubmit = false;
-  let processing = false;
 
   const handleKeydown = (e: KeyboardEvent) => {
     if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
@@ -16,9 +16,12 @@ export function attachInterception(adapter: SiteAdapter, session: PlaceholderSes
     if (!input || !isEventWithin(e, input)) return;
     if (consumeBypass()) return;
 
+    const outcome = evaluate(input);
+    if (outcome === null) return; // nothing to flag — let the original event through untouched
+
     e.preventDefault();
     e.stopImmediatePropagation();
-    void handleSubmitAttempt(input, () => {
+    handleInterception(input, outcome, () => {
       allowNextSubmit = true;
       input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
     });
@@ -31,9 +34,12 @@ export function attachInterception(adapter: SiteAdapter, session: PlaceholderSes
     if (!sendButton || !isEventWithin(e, sendButton)) return;
     if (consumeBypass()) return;
 
+    const outcome = evaluate(input);
+    if (outcome === null) return;
+
     e.preventDefault();
     e.stopImmediatePropagation();
-    void handleSubmitAttempt(input, () => {
+    handleInterception(input, outcome, () => {
       allowNextSubmit = true;
       sendButton.click();
     });
@@ -45,50 +51,68 @@ export function attachInterception(adapter: SiteAdapter, session: PlaceholderSes
     return true;
   }
 
-  async function handleSubmitAttempt(input: HTMLElement, proceed: () => void): Promise<void> {
-    if (processing) return; // a review panel is already open for this input
-    processing = true;
-    try {
-      const text = adapter.getText(input);
-      if (!text.trim()) {
-        proceed();
-        return;
-      }
+  // Only preventDefault()/stopImmediatePropagation() the submit event when
+  // there's actually something to flag — most prompts have nothing
+  // sensitive in them, and letting those go through as the original,
+  // untouched, real trusted event (rather than always intercepting and
+  // conditionally replaying via a synthetic re-dispatch) is simpler and
+  // more robust than relying on the bypass/re-dispatch mechanism for the
+  // common case. That mechanism is still needed, but now only for the much
+  // rarer WARN → "Send Anyway" path.
+  function evaluate(input: HTMLElement): { text: string; effectiveAction: PolicyAction; detection: DetectionResult } | null {
+    const text = adapter.getText(input);
+    if (!text.trim()) return null;
 
-      const settings = await getSettings();
-      const detection = runDetection(text, settings.customTerms);
-      if (detection.matches.length === 0) {
-        proceed();
-        return;
-      }
+    const settings = getCachedSettings();
+    const detection = runDetection(text, settings.customTerms);
+    if (detection.matches.length === 0) return null;
 
-      const effectiveAction = resolveEffectiveAction(detection, settings.policy);
-      if (effectiveAction === "ALLOW") {
-        proceed();
-        return;
-      }
+    const effectiveAction = resolveEffectiveAction(detection, settings.policy);
+    if (effectiveAction === "ALLOW") return null;
 
+    return { text, effectiveAction, detection };
+  }
+
+  function handleInterception(
+    input: HTMLElement,
+    { text, effectiveAction, detection }: { text: string; effectiveAction: PolicyAction; detection: DetectionResult },
+    proceed: () => void
+  ): void {
+    const categories = detection.matches.map((m) => m.category);
+
+    if (effectiveAction === "REDACT") {
+      // Auto-redact immediately, in place — no confirmation click, no
+      // reload. Never auto-submits: the user reviews the now-redacted
+      // draft and presses Enter/Send themselves, at which point detection
+      // finds nothing left to flag and it goes through normally (via the
+      // untouched-real-event path above, not a re-dispatch).
+      const redacted = session.redact(text, detection.matches);
+      adapter.setText(input, redacted);
+      showToast(
+        `Redacted ${detection.matches.length} item${detection.matches.length === 1 ? "" : "s"} (${describeCategories(
+          categories
+        )}). Review your draft, then send it yourself.`
+      );
+      void logActivity(adapter, categories, effectiveAction, false);
+      return;
+    }
+
+    // WARN or BLOCK: neither ever rewrites the DOM (WARN's choices are
+    // Send Anyway / Cancel; BLOCK only offers Cancel), so the review panel
+    // is safe to use here.
+    void (async () => {
       const decision = await showReviewPanel({
         siteName: adapter.displayName,
         matches: detection.matches,
         effectiveAction,
       });
 
-      await logActivity(adapter, detection.matches.map((m) => m.category), effectiveAction, decision === "send_anyway");
+      await logActivity(adapter, categories, effectiveAction, decision === "send_anyway");
 
-      if (decision === "cancel") return;
       if (decision === "send_anyway") {
         proceed();
-        return;
       }
-
-      // decision === "redact"
-      const redacted = session.redact(text, detection.matches);
-      adapter.setText(input, redacted);
-      proceed();
-    } finally {
-      processing = false;
-    }
+    })();
   }
 
   document.addEventListener("keydown", handleKeydown, true);
@@ -102,6 +126,12 @@ export function attachInterception(adapter: SiteAdapter, session: PlaceholderSes
 
 function isEventWithin(e: Event, el: HTMLElement): boolean {
   return e.target instanceof Node && el.contains(e.target);
+}
+
+function describeCategories(categories: Category[]): string {
+  return Array.from(new Set(categories))
+    .map((c) => c.toLowerCase().replace(/_/g, " "))
+    .join(", ");
 }
 
 async function logActivity(

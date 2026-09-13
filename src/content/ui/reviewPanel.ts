@@ -1,7 +1,12 @@
 import type { Match, PolicyAction } from "../../types";
 import { PANEL_STYLES } from "./styles";
 
-export type ReviewDecision = "redact" | "send_anyway" | "cancel";
+// Only ever shown for WARN or BLOCK — REDACT is handled automatically,
+// synchronously, before this panel would ever be invoked (see
+// interceptor.ts). Neither remaining choice touches the page's DOM: Send
+// Anyway just lets the original submission through, Cancel/Edit Prompt just
+// leaves the draft as-is for the user to edit themselves.
+export type ReviewDecision = "send_anyway" | "cancel";
 
 interface ReviewPanelParams {
   siteName: string;
@@ -63,7 +68,7 @@ function buildHeader(params: ReviewPanelParams): HTMLElement {
   header.className = "header";
 
   const dot = document.createElement("span");
-  dot.className = `dot ${params.effectiveAction === "WARN" ? "warn" : params.effectiveAction === "REDACT" ? "redact" : ""}`;
+  dot.className = `dot ${params.effectiveAction === "WARN" ? "warn" : ""}`;
   header.appendChild(dot);
 
   const title = document.createElement("strong");
@@ -132,8 +137,7 @@ function buildFooter(
     return footer;
   }
 
-  footer.appendChild(makeButton("Redact & Send", "primary", () => onDecision("redact")));
-  footer.appendChild(makeButton("Send Anyway", "secondary", () => onDecision("send_anyway")));
+  footer.appendChild(makeButton("Send Anyway", "primary", () => onDecision("send_anyway")));
   footer.appendChild(makeButton("Cancel", "ghost", () => onDecision("cancel")));
   return footer;
 }

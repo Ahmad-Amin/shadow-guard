@@ -30,6 +30,27 @@ export function onSettingsChanged(callback: (settings: ShadowGuardSettings) => v
   return () => chrome.storage.onChanged.removeListener(listener);
 }
 
+// interceptor.ts checks policy on every Enter/Send attempt and needs the
+// result immediately, without an `await` round-trip through
+// chrome.storage.local.get() on every keystroke. This cache is populated
+// once at content-script startup and kept fresh via onSettingsChanged.
+let cachedSettings: ShadowGuardSettings = DEFAULT_SETTINGS;
+
+/** Call once per content script load, before relying on getCachedSettings(). */
+export function initSettingsCache(): void {
+  void getSettings().then((settings) => {
+    cachedSettings = settings;
+  });
+  onSettingsChanged((settings) => {
+    cachedSettings = { ...DEFAULT_SETTINGS, ...settings };
+  });
+}
+
+/** Synchronous read of the last-known settings; falls back to defaults until the initial async load completes. */
+export function getCachedSettings(): ShadowGuardSettings {
+  return cachedSettings;
+}
+
 export async function getActivity(): Promise<ActivityEvent[]> {
   const stored = await chrome.storage.local.get(ACTIVITY_KEY);
   return (stored[ACTIVITY_KEY] as ActivityEvent[] | undefined) ?? [];

@@ -1,7 +1,13 @@
 import { getElementText, querySelectorFirst, setElementText } from "./domUtils";
 import type { SiteAdapter } from "./types";
 
-const INPUT_SELECTORS = ["#prompt-textarea", 'div[contenteditable="true"][id^="prompt-textarea"]'];
+const INPUT_SELECTORS = [
+  "#prompt-textarea",
+  'div[contenteditable="true"][id^="prompt-textarea"]',
+  // Logged-out chatgpt.com serves a simplified composer with a real <textarea>.
+  "textarea[data-mobile-composer-prompt]",
+  "#mobile-composer-prompt",
+];
 const SEND_BUTTON_SELECTORS = ['button[data-testid="send-button"]', 'button[aria-label*="Send" i]'];
 const RESPONSE_CONTAINER_SELECTORS = ["main [role='presentation']", "main"];
 

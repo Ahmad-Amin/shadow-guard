@@ -1,7 +1,7 @@
 # ShadowGuard — Extension MVP Demo
 
 Local-first Chrome extension that detects secrets, credentials and PII before
-they're sent to ChatGPT, Claude or Gemini, and offers one-click redaction
+they're sent to ChatGPT, Claude or Gemini, and redacts them automatically
 with local, reversible placeholders. Built per `ShadowGuard_Product_Blueprint.pdf`
 section 21 ("Recommended First Build") — no backend, no admin dashboard yet;
 everything runs and stores locally in the browser via `chrome.storage.local`.
@@ -12,11 +12,22 @@ everything runs and stores locally in the browser via `chrome.storage.local`.
 2. Runs local regex-based detectors for secrets (API keys, AWS keys, JWTs,
    private key blocks, DB connection strings, ...), PII (email, phone, SSN,
    credit card w/ Luhn check, IBAN), and your own custom terms/regex.
-3. Shows a review panel with the categories found and the policy action
-   (Allow / Warn / Redact / Block) configured for each.
-4. On "Redact & Send", replaces sensitive values with placeholders like
-   `[EMAIL_1]`, `[SECRET_REMOVED]` before the text ever leaves the page, and
-   best-effort restores them in the AI's response.
+3. Applies your configured policy per category (Allow / Warn / Redact / Block):
+   - **Block** (e.g. secrets, SSNs by default): shows a panel explaining what
+     was found; the submission is stopped and can only be edited, not sent
+     as-is.
+   - **Redact** (e.g. email, phone, credit card by default): automatically
+     rewrites the sensitive values in place to placeholders like `[EMAIL_1]`
+     right when you hit Enter/Send — no confirmation click, no page reload.
+     It never auto-submits the redacted draft; you review it and press
+     Enter/Send yourself, at which point it goes through normally (detection
+     now finds nothing left to flag).
+   - **Warn** (e.g. person names — no detector emits this category yet): a
+     panel offers Send Anyway or Cancel.
+4. Best-effort restores placeholders back to their real values when they
+   appear in the AI's response, scoped to exclude the prompt box itself (see
+   "Known limitations" — this exclusion is the fix for a real bug that
+   existed earlier).
 5. Logs minimized activity (category + action, not raw content) viewable in
    the extension popup.
 
@@ -40,13 +51,68 @@ npm run build   # one-off production build into dist/
    an email address or a fake API key (`sk-` followed by 20+ characters) into
    the prompt box, then hit Enter.
 
+**After changing the code:** `npm run build`, then click the reload icon (⟳)
+on the extension's card in `chrome://extensions` — and also hard-refresh
+(⌘R/Ctrl+R) any ChatGPT/Claude/Gemini tab you already had open. Reloading the
+extension does not update content scripts already injected into open tabs;
+clicking something like ChatGPT's "New chat" is client-side routing, not a
+page load, so it won't pick up the new script either — only a real refresh
+or a brand-new tab does.
+
+Also worth knowing while testing: Chrome will sometimes silently disable an
+unpacked extension after several reload cycles, showing "Turn on developer
+mode to use this extension" on its card even though the toggle looks fine —
+if the extension stops intercepting anything, check `chrome://extensions`
+and toggle Developer mode off/on to re-enable it.
+
 ## Known limitations (by design, for this first pass)
 
 - Site selectors (`src/content/adapters/*.ts`) are best-effort; ChatGPT/Claude/
   Gemini change their DOM periodically, so interception can silently stop
   working on a given site until selectors are updated.
+- **Auto-redact was, for a long time during development, unreliable on rich-
+  text composers (ChatGPT's `#prompt-textarea`/ProseMirror, Gemini's Quill
+  editor) — a rewrite would apply and then silently revert a moment later.**
+  This took an unusually long investigation (dozens of controlled, repeated
+  trials against real chatgpt.com/gemini.google.com) because the actual cause
+  was in a completely different, unrelated file, and every plausible
+  Quill/ProseMirror-internals theory (clipboard vs. `execCommand`, isolated
+  vs. main JS world via a real cross-world bridge, timing, focus theft,
+  synchronous vs. panel-click-triggered rewrites, the panel's DOM lifecycle,
+  a two-step "second Enter press" design) was ruled out one at a time, each
+  confirmed with multiple repeated runs, before the real bug was found:
+  **`responseRestorer.ts`'s own `MutationObserver` — which watches the page
+  for AI responses so it can swap `[EMAIL_1]`-style placeholders back to
+  real values — was scoped too broadly.** Its container selectors (e.g.
+  `"main"`) can include the prompt editor itself, not just past responses.
+  The instant a redaction wrote `[EMAIL_1]` into the editor, this observer
+  saw that same mutation, found a matching entry in the placeholder session
+  (populated by the redaction that had just run), and "restored" it straight
+  back to the original value — undoing our own redaction, silently, a moment
+  after it applied. Fixed by excluding the prompt input's own subtree from
+  restoration (`restorePlaceholdersInSubtree`'s `excludeInput` parameter).
+  With that one fix, redaction works reliably and immediately, synchronously,
+  with no button, no clipboard, no page reload — confirmed via dozens of
+  repeated runs at wait times up to 5+ seconds on real chatgpt.com and
+  gemini.google.com.
 - Response restoration (placeholders → original values in the AI's reply) is
-  a best-effort text-node scan, not a guaranteed contract.
+  still a best-effort text-node scan, not a guaranteed contract — it's just
+  no longer scoped broadly enough to clobber the prompt box.
+- A second, separate bug surfaced while fixing the one above: harmless
+  prompts stopped sending at all. The original design always called
+  `preventDefault()`/`stopImmediatePropagation()` on every Enter/Send
+  attempt, then conditionally replayed it via a synthetic re-dispatched
+  event for the common "nothing sensitive, let it through" case. That
+  re-dispatch was intermittently not being recognized as the bypass by our
+  own listener (root cause not fully isolated — possibly some interaction
+  with the page's own event handling reprocessing the redispatched event).
+  Fixed by restructuring `interceptor.ts` to check synchronously *before*
+  ever touching the event: `preventDefault()` is now called only when there
+  is actually something to flag (Warn/Redact/Block), so the common case
+  (nothing sensitive) lets the real, original, trusted event through
+  untouched — no synthetic re-dispatch involved at all. The bypass/
+  re-dispatch mechanism still exists, but only for the much rarer WARN →
+  "Send Anyway" path.
 - No backend, sync across devices, admin dashboard, or file upload scanning
   yet — see the blueprint's MVP scope (section 7) and roadmap (section 15)
   for what's next.
