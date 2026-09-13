@@ -65,6 +65,27 @@ mode to use this extension" on its card even though the toggle looks fine —
 if the extension stops intercepting anything, check `chrome://extensions`
 and toggle Developer mode off/on to re-enable it.
 
+## Licensing (Lemon Squeezy)
+
+Chrome Web Store no longer supports paid listings, so monetization happens
+outside the store: the extension installs free, runs fully for a **7-day
+trial**, then interception/redaction pauses (fails open — it never blocks
+submissions on an unpaid device) until a purchased license key is activated.
+
+- `src/license/license.ts` — all license state (`chrome.storage.local`) and
+  the calls to Lemon Squeezy's [client-callable License API](https://docs.lemonsqueezy.com/help/licensing/license-api)
+  (`activate` / `validate` / `deactivate`). No API secret is involved — only
+  the license key itself is ever sent, and only on explicit
+  activate/deactivate.
+- Trial start is recorded once, at install (`service-worker.ts`'s
+  `onInstalled`), not at first use.
+- The options page has the "License" card (activate/deactivate); the popup
+  shows a compact trial-countdown or "protection paused" banner.
+- **Before shipping**: create the $10 lifetime product in Lemon Squeezy and
+  set `LEMONSQUEEZY_CHECKOUT_URL` in `src/license/license.ts` — it's left
+  blank for now, and the options page simply hides the "buy" link until it's
+  set.
+
 ## Known limitations (by design, for this first pass)
 
 - Site selectors (`src/content/adapters/*.ts`) are best-effort; ChatGPT/Claude/

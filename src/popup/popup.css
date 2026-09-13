@@ -167,3 +167,29 @@ input:checked + .slider::before {
 .footer-link:hover {
   background: #f4f7fc;
 }
+
+.license-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 12px;
+  border-bottom: 1px solid #eef1f6;
+}
+
+.license-banner.trial {
+  background: #eef2ff;
+  color: #2b3a67;
+}
+
+.license-banner.expired {
+  background: #ffe9e9;
+  color: #a4121a;
+  font-weight: 700;
+}
+
+.license-banner a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+}

@@ -178,3 +178,24 @@ select {
 .saved-pill.visible {
   opacity: 1;
 }
+
+.license-status {
+  font-size: 13px;
+  margin: 0 0 10px;
+}
+
+.license-status.active {
+  color: #1a7a3e;
+  font-weight: 700;
+}
+
+.license-status.expired {
+  color: #a4121a;
+  font-weight: 700;
+}
+
+.license-error {
+  color: #a4121a;
+  font-size: 12px;
+  margin: 8px 0 0;
+}

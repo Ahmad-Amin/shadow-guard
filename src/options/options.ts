@@ -1,5 +1,14 @@
 import { POLICY_TEMPLATES } from "../policy/defaultPolicy";
 import { getSettings, saveSettings } from "../policy/storage";
+import {
+  LEMONSQUEEZY_CHECKOUT_URL,
+  activateLicense,
+  computeEntitlement,
+  deactivateLicense,
+  getLicenseRecord,
+  type Entitlement,
+  type LicenseRecord,
+} from "../license/license";
 import type { Category, CustomTerm, PolicyAction, ShadowGuardSettings } from "../types";
 
 const app = document.getElementById("app");
@@ -11,7 +20,12 @@ const CATEGORY_LABELS: Record<Category, string> = {
   PHONE: "Phone numbers",
   CREDIT_CARD: "Credit card numbers",
   SSN: "Social Security Numbers",
-  IBAN: "Bank account / IBAN",
+  IBAN: "IBAN",
+  BANK_ACCOUNT: "Bank account / routing numbers",
+  PASSPORT: "Passport numbers",
+  DOB: "Dates of birth",
+  ADDRESS: "Street addresses",
+  IP_ADDRESS: "Private IP addresses",
   PERSON: "Person names",
   CUSTOM: "Custom protected terms",
 };
@@ -19,9 +33,14 @@ const CATEGORY_LABELS: Record<Category, string> = {
 const POLICY_ACTIONS: PolicyAction[] = ["ALLOW", "WARN", "REDACT", "BLOCK"];
 
 let settings: ShadowGuardSettings;
+let licenseRecord: LicenseRecord;
+let entitlement: Entitlement;
+let activating = false;
+let activationError: string | null = null;
 
 async function init(): Promise<void> {
-  settings = await getSettings();
+  [settings, licenseRecord] = await Promise.all([getSettings(), getLicenseRecord()]);
+  entitlement = computeEntitlement(licenseRecord);
   render();
 }
 
@@ -32,6 +51,11 @@ function render(): void {
         <h1>ShadowGuard Settings</h1>
         <p>Choose how ShadowGuard reacts to each data category, and add terms specific to your organization.</p>
       </header>
+
+      <section class="card">
+        <h2>License</h2>
+        ${renderLicenseBody()}
+      </section>
 
       <section class="card">
         <h2>Policy templates</h2>
@@ -73,6 +97,72 @@ function render(): void {
   renderTermRows();
   wireTemplateButtons();
   wireTermForm();
+  wireLicenseForm();
+}
+
+function renderLicenseBody(): string {
+  if (entitlement.status === "active") {
+    return `
+      <p class="license-status active">✓ Activated${
+        licenseRecord.customerEmail ? ` — ${escapeHtml(licenseRecord.customerEmail)}` : ""
+      }</p>
+      <p class="hint">This device has lifetime access. No trial limits apply.</p>
+      <button class="remove-btn" id="deactivate-btn">Deactivate this device</button>
+    `;
+  }
+
+  const expired = entitlement.status === "expired";
+  const statusLine = expired
+    ? `<p class="license-status expired">Your trial has ended — activate a license to resume protection.</p>`
+    : `<p class="hint">Free trial — ${entitlement.trialDaysLeft} day${
+        entitlement.trialDaysLeft === 1 ? "" : "s"
+      } left. Activate below any time to unlock lifetime access.</p>`;
+
+  const buyLine = LEMONSQUEEZY_CHECKOUT_URL
+    ? `<p class="hint">Don't have a key yet? <a href="${LEMONSQUEEZY_CHECKOUT_URL}" target="_blank" rel="noopener">Get lifetime access — $10</a></p>`
+    : "";
+
+  return `
+    ${statusLine}
+    <div class="term-form">
+      <input type="text" id="license-key-input" placeholder="Paste your license key" />
+      <button class="add-btn" id="activate-btn" ${activating ? "disabled" : ""}>${
+        activating ? "Activating…" : "Activate"
+      }</button>
+    </div>
+    ${activationError ? `<p class="license-error">${escapeHtml(activationError)}</p>` : ""}
+    ${buyLine}
+  `;
+}
+
+function wireLicenseForm(): void {
+  document.getElementById("activate-btn")?.addEventListener("click", async () => {
+    const input = document.getElementById("license-key-input") as HTMLInputElement | null;
+    const key = input?.value.trim() ?? "";
+    if (!key) return;
+
+    activating = true;
+    activationError = null;
+    render();
+
+    const result = await activateLicense(key);
+    activating = false;
+
+    if (result.ok) {
+      licenseRecord = await getLicenseRecord();
+      entitlement = computeEntitlement(licenseRecord);
+    } else {
+      activationError = result.error;
+    }
+    render();
+  });
+
+  document.getElementById("deactivate-btn")?.addEventListener("click", async () => {
+    await deactivateLicense();
+    licenseRecord = await getLicenseRecord();
+    entitlement = computeEntitlement(licenseRecord);
+    render();
+  });
 }
 
 function renderPolicyRows(): void {

@@ -1,11 +1,13 @@
 import { getActivity, getSettings, saveSettings } from "../policy/storage";
+import { computeEntitlement, getLicenseRecord, type Entitlement } from "../license/license";
 import type { ActivityEvent } from "../types";
 
 const app = document.getElementById("app");
 if (!app) throw new Error("popup root missing");
 
 async function render(): Promise<void> {
-  const [settings, activity] = await Promise.all([getSettings(), getActivity()]);
+  const [settings, activity, licenseRecord] = await Promise.all([getSettings(), getActivity(), getLicenseRecord()]);
+  const entitlement = computeEntitlement(licenseRecord);
 
   app!.innerHTML = `
     <div class="header">
@@ -14,6 +16,7 @@ async function render(): Promise<void> {
         <div class="subtitle">Protecting your AI prompts</div>
       </div>
     </div>
+    ${renderLicenseBanner(entitlement)}
     <div class="toggle-row">
       <div>
         <div class="label">Private AI Mode</div>
@@ -38,6 +41,26 @@ async function render(): Promise<void> {
     e.preventDefault();
     chrome.runtime.openOptionsPage();
   });
+
+  document.getElementById("open-options-license")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    chrome.runtime.openOptionsPage();
+  });
+}
+
+function renderLicenseBanner(entitlement: Entitlement): string {
+  if (entitlement.status === "active") return "";
+
+  const expired = entitlement.status === "expired";
+  const message = expired
+    ? "Protection paused — activate to resume"
+    : `Trial: ${entitlement.trialDaysLeft} day${entitlement.trialDaysLeft === 1 ? "" : "s"} left`;
+
+  return `
+    <div class="license-banner ${expired ? "expired" : "trial"}">
+      <span>${message}</span>
+      <a href="#" id="open-options-license">${expired ? "Activate" : "Upgrade"}</a>
+    </div>`;
 }
 
 function renderActivity(activity: ActivityEvent[]): string {

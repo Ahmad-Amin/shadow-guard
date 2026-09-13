@@ -33,7 +33,10 @@ export default defineManifest({
     type: "module",
   },
   permissions: ["storage"],
-  host_permissions: AI_SITE_MATCHES,
+  // api.lemonsqueezy.com is used only to activate/validate a purchased
+  // license key (the key itself, nothing else) — no page content or
+  // detected data is ever sent there.
+  host_permissions: [...AI_SITE_MATCHES, "https://api.lemonsqueezy.com/*"],
   content_scripts: [
     {
       matches: AI_SITE_MATCHES,

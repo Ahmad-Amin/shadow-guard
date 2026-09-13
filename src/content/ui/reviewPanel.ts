@@ -18,6 +18,11 @@ const CATEGORY_EXPLANATIONS: Partial<Record<string, string>> = {
   SECRET: "Credentials and API keys should never be submitted to a public AI tool.",
   SSN: "Social Security Numbers are high-risk identifiers under most company policies.",
   CREDIT_CARD: "Card numbers are financial data and should be redacted before sending.",
+  BANK_ACCOUNT: "Bank account and routing numbers are financial data and should be redacted before sending.",
+  PASSPORT: "Passport numbers are government identifiers and are treated as high-risk.",
+  DOB: "Dates of birth combined with other details can be used for identity theft.",
+  ADDRESS: "Street addresses are personal data and should be redacted before sending.",
+  IP_ADDRESS: "Private/internal IP addresses can reveal details about your network.",
   CUSTOM: "This matches a term your organization has marked as confidential.",
 };
 

@@ -5,6 +5,11 @@ export type Category =
   | "CREDIT_CARD"
   | "SSN"
   | "IBAN"
+  | "BANK_ACCOUNT"
+  | "PASSPORT"
+  | "DOB"
+  | "ADDRESS"
+  | "IP_ADDRESS"
   | "PERSON"
   | "CUSTOM";
 

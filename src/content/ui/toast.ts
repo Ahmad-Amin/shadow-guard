@@ -20,9 +20,30 @@ const TOAST_STYLES = `
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  .action {
+    display: block;
+    margin-top: 8px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .action:hover { background: rgba(255, 255, 255, 0.12); }
 `;
 
-export function showToast(message: string, durationMs = 5000): void {
+interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
+export function showToast(message: string, durationMsOrAction?: number | ToastAction, durationMs = 8000): void {
+  const action = typeof durationMsOrAction === "object" ? durationMsOrAction : undefined;
+  const duration = typeof durationMsOrAction === "number" ? durationMsOrAction : durationMs;
+
   const host = document.createElement("div");
   host.setAttribute("data-shadowguard-toast", "");
   document.body.appendChild(host);
@@ -37,5 +58,16 @@ export function showToast(message: string, durationMs = 5000): void {
   toast.textContent = message;
   shadow.appendChild(toast);
 
-  setTimeout(() => host.remove(), durationMs);
+  if (action) {
+    const button = document.createElement("button");
+    button.className = "action";
+    button.textContent = action.label;
+    button.addEventListener("click", () => {
+      host.remove();
+      action.onClick();
+    });
+    toast.appendChild(button);
+  }
+
+  setTimeout(() => host.remove(), duration);
 }

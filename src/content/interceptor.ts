@@ -1,6 +1,7 @@
 import { runDetection } from "../detectors";
 import { PlaceholderSession } from "../redaction/placeholders";
 import { getCachedSettings, recordActivity } from "../policy/storage";
+import { getCachedEntitlement } from "../license/license";
 import type { ActivityEvent, Category, DetectionResult, PolicyAction } from "../types";
 import type { SiteAdapter } from "./adapters/types";
 import { resolveEffectiveAction } from "./policyResolution";
@@ -9,6 +10,7 @@ import { showToast } from "./ui/toast";
 
 export function attachInterception(adapter: SiteAdapter, session: PlaceholderSession): () => void {
   let allowNextSubmit = false;
+  let bypassTimer: ReturnType<typeof setTimeout> | null = null;
 
   const handleKeydown = (e: KeyboardEvent) => {
     if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
@@ -22,7 +24,7 @@ export function attachInterception(adapter: SiteAdapter, session: PlaceholderSes
     e.preventDefault();
     e.stopImmediatePropagation();
     handleInterception(input, outcome, () => {
-      allowNextSubmit = true;
+      grantBypass(5000);
       input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
     });
   };
@@ -40,14 +42,33 @@ export function attachInterception(adapter: SiteAdapter, session: PlaceholderSes
     e.preventDefault();
     e.stopImmediatePropagation();
     handleInterception(input, outcome, () => {
-      allowNextSubmit = true;
+      grantBypass(5000);
       sendButton.click();
     });
   };
 
+  // Arms a one-shot bypass for the next Enter/Send attempt, auto-expiring
+  // after `ttlMs` if never consumed. Used both for the immediate synthetic
+  // re-dispatch after a WARN "Send Anyway" decision, and for the REDACT
+  // toast's "Send anyway" action, where the user's *own* later keypress is
+  // what actually submits — the TTL keeps a clicked-but-never-sent bypass
+  // from silently waiving detection on unrelated text typed much later.
+  function grantBypass(ttlMs: number): void {
+    allowNextSubmit = true;
+    if (bypassTimer) clearTimeout(bypassTimer);
+    bypassTimer = setTimeout(() => {
+      allowNextSubmit = false;
+      bypassTimer = null;
+    }, ttlMs);
+  }
+
   function consumeBypass(): boolean {
     if (!allowNextSubmit) return false;
     allowNextSubmit = false;
+    if (bypassTimer) {
+      clearTimeout(bypassTimer);
+      bypassTimer = null;
+    }
     return true;
   }
 
@@ -62,6 +83,11 @@ export function attachInterception(adapter: SiteAdapter, session: PlaceholderSes
   function evaluate(input: HTMLElement): { text: string; effectiveAction: PolicyAction; detection: DetectionResult } | null {
     const text = adapter.getText(input);
     if (!text.trim()) return null;
+
+    // Trial expired and no license activated: protection pauses (fails
+    // open) rather than silently blocking someone who hasn't paid — the
+    // popup/options surface the "activate to resume" prompt instead.
+    if (getCachedEntitlement().status === "expired") return null;
 
     const settings = getCachedSettings();
     const detection = runDetection(text, settings.customTerms);
@@ -91,7 +117,20 @@ export function attachInterception(adapter: SiteAdapter, session: PlaceholderSes
       showToast(
         `Redacted ${detection.matches.length} item${detection.matches.length === 1 ? "" : "s"} (${describeCategories(
           categories
-        )}). Review your draft, then send it yourself.`
+        )}). Review your draft, then send it yourself.`,
+        {
+          label: "Send anyway",
+          onClick: () => {
+            // Restore the original (unredacted) text and arm a one-shot
+            // bypass so the user's own next Enter/Send goes through
+            // untouched — it does NOT auto-submit for them, matching
+            // REDACT's "never auto-submit" rule.
+            adapter.setText(input, text);
+            grantBypass(15000);
+            showToast("Original text restored — press Enter/Send within 15s to submit it as-is.", 4000);
+            void logActivity(adapter, categories, effectiveAction, true);
+          },
+        }
       );
       void logActivity(adapter, categories, effectiveAction, false);
       return;
