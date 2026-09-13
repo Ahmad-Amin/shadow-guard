@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy Policy — ShadowGuard</title>
+<link rel="icon" href="./icon.png" />
+<style>
+  :root {
+    --navy: #13233f;
+    --blue: #3a86ff;
+    --muted: #7a8aa8;
+    --text: #4a5a78;
+    --bg: #f4f7fc;
+    --card: #ffffff;
+    --border: #e3e8f2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--navy);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  a { color: var(--blue); }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+  .back { font-size: 13px; font-weight: 600; text-decoration: none; color: var(--muted); }
+  .back:hover { color: var(--navy); }
+  h1 { font-size: 28px; margin: 20px 0 6px; }
+  .updated { font-size: 12.5px; color: var(--muted); margin: 0 0 32px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 32px;
+  }
+  h2 { font-size: 16px; margin: 28px 0 10px; }
+  h2:first-child { margin-top: 0; }
+  p, li { font-size: 14px; color: var(--text); }
+  ul { padding-left: 20px; }
+  .callout {
+    background: #eaf1ff;
+    border: 1px solid #cfe0ff;
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 13.5px;
+    color: #1a4fa4;
+    margin: 20px 0;
+  }
+  code { background: #f0f3f9; padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./index.html">← Back to ShadowGuard</a>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: September 2026</p>
+
+  <div class="card">
+    <div class="callout">
+      The short version: ShadowGuard runs entirely on your device. It does not have a server, does not
+      collect analytics, and does not see or store the contents of your prompts anywhere except your
+      own browser. The one exception — activating a paid license — is explained below in full.
+    </div>
+
+    <h2>What ShadowGuard is</h2>
+    <p>
+      ShadowGuard is a Chrome extension that scans text you're about to send to ChatGPT, Claude or
+      Gemini for secrets, credentials and personal data, and can redact or block it before it's sent.
+      All scanning happens locally, in your browser, using on-device pattern matching — no text is
+      transmitted to any server for analysis.
+    </p>
+
+    <h2>What we store, and where</h2>
+    <p>Everything below is stored only in your own browser's local extension storage (<code>chrome.storage.local</code>), never on any external server:</p>
+    <ul>
+      <li><strong>Your policy settings</strong> — which categories you've set to Allow, Warn, Redact or Block, and any custom terms you've added.</li>
+      <li><strong>A minimized activity log</strong> — just the category and action of things ShadowGuard caught (e.g. "email — redacted"), never the actual sensitive value, so you can review what it's done.</li>
+      <li><strong>A license record</strong> — your trial start date, and if activated, your license key, activation ID, and the email associated with your purchase.</li>
+    </ul>
+    <p>
+      The actual sensitive values ShadowGuard redacts (e.g. a real email address behind a
+      <code>[EMAIL_1]</code> placeholder) are held only in memory for the current browser tab's
+      session, so a response from the AI can be shown with real values restored. This mapping is
+      never written to disk and disappears when you close or refresh the tab.
+    </p>
+
+    <h2>What's ever sent outside your browser</h2>
+    <p>
+      Exactly one thing: when you activate, deactivate, or ShadowGuard periodically re-checks a
+      license, your license key (and nothing else — no prompt text, no detected values, no browsing
+      activity) is sent to Lemon Squeezy, our payment and licensing provider, to verify it's valid.
+      This only happens when you've entered a license key yourself; it never happens automatically for
+      the free trial. See <a href="https://www.lemonsqueezy.com/privacy" target="_blank" rel="noopener">Lemon Squeezy's own privacy policy</a> for how they handle that data.
+    </p>
+    <p>
+      ShadowGuard does not use analytics, telemetry, crash reporting, or any third-party tracking
+      script. There is no ShadowGuard server receiving data from your browser at all.
+    </p>
+
+    <h2>Why ShadowGuard requests the permissions it does</h2>
+    <ul>
+      <li><strong>Site access to chatgpt.com, chat.openai.com, claude.ai and gemini.google.com</strong> — required to read the prompt box's text at the moment you submit, and to rewrite it in place when redacting. ShadowGuard does not request access to any other website.</li>
+      <li><strong>Site access to api.lemonsqueezy.com</strong> — required only to make the license activation/validation request described above.</li>
+      <li><strong><code>storage</code></strong> — required to save your settings and activity log locally, as described above.</li>
+    </ul>
+
+    <h2>Data you can delete</h2>
+    <p>
+      Uninstalling the extension removes all locally stored data immediately. You can also clear your
+      activity log and custom terms at any time from the extension's options page, and deactivate a
+      license from the same page (which also releases that device's activation slot on our end).
+    </p>
+
+    <h2>Children's privacy</h2>
+    <p>
+      ShadowGuard is not directed at children and does not knowingly collect data from children under 13.
+    </p>
+
+    <h2>Changes to this policy</h2>
+    <p>
+      If this policy changes, the updated version will be posted at this same URL with a revised
+      "Last updated" date.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Questions about this policy or how ShadowGuard handles data: <a href="mailto:baigahmad323@gmail.com">baigahmad323@gmail.com</a>.
+    </p>
+  </div>
+</div>
+</body>
+</html>
