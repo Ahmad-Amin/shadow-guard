@@ -10,7 +10,7 @@
 // when the user explicitly activates/deactivates.
 
 // TODO: fill in once the Lemon Squeezy product/checkout is created.
-export const LEMONSQUEEZY_CHECKOUT_URL = 'https://customreactform.lemonsqueezy.com/checkout/buy/d0c165e8-85a5-4c66-909e-486b952e27ea';
+export const LEMONSQUEEZY_CHECKOUT_URL = 'https://customreactform.lemonsqueezy.com/checkout/buy/743a7ff6-7efd-4c9b-be46-9290cb67cc49';
 
 const LEMONSQUEEZY_API = 'https://api.lemonsqueezy.com/v1/licenses';
 const STORAGE_KEY = 'shadowguard:license';
