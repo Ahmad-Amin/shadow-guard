@@ -1,5 +1,5 @@
 export interface SiteAdapter {
-  id: "chatgpt" | "claude" | "gemini";
+  id: string;
   displayName: string;
   matchesHost(hostname: string): boolean;
 

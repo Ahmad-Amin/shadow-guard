@@ -6,13 +6,22 @@ const AI_SITE_MATCHES = [
   "https://chat.openai.com/*",
   "https://claude.ai/*",
   "https://gemini.google.com/*",
+  "https://www.perplexity.ai/*",
+  "https://perplexity.ai/*",
+  "https://copilot.microsoft.com/*",
+  "https://www.meta.ai/*",
+  "https://meta.ai/*",
+  "https://grok.com/*",
+  "https://chat.deepseek.com/*",
+  "https://chat.mistral.ai/*",
+  "https://poe.com/*",
 ];
 
 export default defineManifest({
   manifest_version: 3,
   name: "ShadowGuard — AI Data Protection",
   description:
-    "Detects secrets, credentials and personal data before you send them to ChatGPT, Claude or Gemini — redact instead of expose.",
+    "Detects secrets, credentials and personal data before you send them to AI chatbots — redact instead of expose.",
   version: pkg.version,
   icons: {
     16: "public/icons/icon16.png",

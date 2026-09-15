@@ -1,6 +1,6 @@
 {
   "name": "shadowguard-extension",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "ShadowGuard browser extension — detects and redacts sensitive data before it reaches AI chat tools.",
   "type": "module",

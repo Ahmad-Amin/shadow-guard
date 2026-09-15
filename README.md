@@ -1,7 +1,8 @@
 # ShadowGuard — Extension MVP Demo
 
 Local-first Chrome extension that detects secrets, credentials and PII before
-they're sent to ChatGPT, Claude or Gemini, and redacts them automatically
+they're sent to ChatGPT, Claude, Gemini, Perplexity, Microsoft Copilot, Meta AI,
+Grok, DeepSeek, Mistral Le Chat or Poe, and redacts them automatically
 with local, reversible placeholders. Built per `ShadowGuard_Product_Blueprint.pdf`
 section 21 ("Recommended First Build") — no backend, no admin dashboard yet;
 everything runs and stores locally in the browser via `chrome.storage.local`.

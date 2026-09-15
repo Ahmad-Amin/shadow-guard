@@ -3,6 +3,7 @@ import { attachInterception } from "./interceptor";
 import { PlaceholderSession } from "../redaction/placeholders";
 import { initSettingsCache } from "../policy/storage";
 import { watchForResponseRestoration } from "./responseRestorer";
+import { watchProtectionStatus } from "./statusMonitor";
 import { getCachedEntitlement, initEntitlementCache } from "../license/license";
 import { showToast } from "./ui/toast";
 
@@ -13,6 +14,7 @@ if (adapter) {
   const session = new PlaceholderSession();
   attachInterception(adapter, session);
   watchForResponseRestoration(adapter, session);
+  watchProtectionStatus(adapter);
 
   void initEntitlementCache().then(() => {
     if (getCachedEntitlement().status === "expired") {
