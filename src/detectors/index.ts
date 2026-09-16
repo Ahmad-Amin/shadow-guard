@@ -1,5 +1,6 @@
 import type { CustomTerm, DetectionResult, Match, Severity } from "../types";
 import { detectCustomTerms } from "./custom";
+import { detectPossibleSecrets } from "./entropy";
 import { detectPii } from "./pii";
 import { detectSecrets } from "./secrets";
 
@@ -16,14 +17,24 @@ export function runDetection(text: string, customTerms: CustomTerm[]): Detection
   // Secrets take priority over PII when spans overlap (e.g. a token that
   // also looks like it contains digits a PII rule might flag).
   const secretMatches = detectSecrets(text);
-  const occupied = secretMatches.map((m) => [m.start, m.end] as const);
+  const secretSpans = secretMatches.map((m) => [m.start, m.end] as const);
 
-  const piiMatches = detectPii(text).filter((m) => !overlapsAny(m, occupied));
+  const piiMatches = detectPii(text).filter((m) => !overlapsAny(m, secretSpans));
   const customMatches = detectCustomTerms(text, customTerms).filter(
-    (m) => !overlapsAny(m, occupied)
+    (m) => !overlapsAny(m, secretSpans)
   );
 
-  const matches = [...secretMatches, ...piiMatches, ...customMatches].sort(
+  // The entropy fallback only fires on spans nothing else already caught —
+  // it's the last, lowest-confidence line of defense, not a competitor to
+  // a named-pattern or PII match.
+  const occupied = [
+    ...secretSpans,
+    ...piiMatches.map((m) => [m.start, m.end] as const),
+    ...customMatches.map((m) => [m.start, m.end] as const),
+  ];
+  const possibleSecretMatches = detectPossibleSecrets(text, occupied);
+
+  const matches = [...secretMatches, ...piiMatches, ...customMatches, ...possibleSecretMatches].sort(
     (a, b) => a.start - b.start
   );
 

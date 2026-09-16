@@ -67,6 +67,7 @@ const PII_RULES: PiiRule[] = [
     label: "IBAN",
     regex: /\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b/g,
     reversible: true,
+    validate: isIbanValid,
   },
   {
     category: "BANK_ACCOUNT",
@@ -74,6 +75,7 @@ const PII_RULES: PiiRule[] = [
     label: "Bank account / routing number",
     regex: /\b\d{8,17}\b/g,
     reversible: true,
+    validate: isBankAccountOrRoutingValid,
     contextKeywords: /\b(?:account|acct\.?|routing|aba)\s*(?:number|no\.?|num\.?|#)?\b/i,
     contextWindow: 30,
   },
@@ -164,6 +166,35 @@ function isLuhnValid(value: string): boolean {
     sum += digit;
     shouldDouble = !shouldDouble;
   }
+  return sum % 10 === 0;
+}
+
+/** ISO 7064 MOD97-10, the IBAN check-digit algorithm: move the first 4 characters to the end, convert letters to numbers (A=10 .. Z=35), and the result must be ≡ 1 mod 97. Computed digit-by-digit since the numeric string can be far too long for JS's number precision. */
+function isIbanValid(value: string): boolean {
+  const cleaned = value.replace(/\s/g, "").toUpperCase();
+  if (cleaned.length < 15 || cleaned.length > 34) return false;
+  const rearranged = cleaned.slice(4) + cleaned.slice(0, 4);
+
+  let remainder = 0;
+  for (const ch of rearranged) {
+    const numeric = ch >= "0" && ch <= "9" ? ch : String(ch.charCodeAt(0) - 55);
+    for (const digit of numeric) {
+      remainder = (remainder * 10 + Number(digit)) % 97;
+    }
+  }
+  return remainder === 1;
+}
+
+/**
+ * US ABA routing numbers (always exactly 9 digits) carry a checksum:
+ * 3×(d1+d4+d7) + 7×(d2+d5+d8) + 1×(d3+d6+d9) ≡ 0 mod 10. General bank
+ * account numbers have no universal checksum (format varies per bank), so
+ * anything not 9 digits is left to the context-keyword requirement alone.
+ */
+function isBankAccountOrRoutingValid(value: string): boolean {
+  if (value.length !== 9) return true;
+  const d = (i: number) => Number(value[i] ?? "0");
+  const sum = 3 * (d(0) + d(3) + d(6)) + 7 * (d(1) + d(4) + d(7)) + 1 * (d(2) + d(5) + d(8));
   return sum % 10 === 0;
 }
 

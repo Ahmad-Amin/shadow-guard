@@ -1,5 +1,6 @@
 export type Category =
   | "SECRET"
+  | "POSSIBLE_SECRET"
   | "EMAIL"
   | "PHONE"
   | "CREDIT_CARD"

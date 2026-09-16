@@ -2,6 +2,7 @@ import type { CategoryPolicy, ShadowGuardSettings } from "../types";
 
 export const DEFAULT_CATEGORY_POLICY: CategoryPolicy[] = [
   { category: "SECRET", action: "BLOCK" },
+  { category: "POSSIBLE_SECRET", action: "WARN" },
   { category: "SSN", action: "BLOCK" },
   { category: "CREDIT_CARD", action: "REDACT" },
   { category: "IBAN", action: "REDACT" },

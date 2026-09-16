@@ -55,12 +55,37 @@ export class PlaceholderSession {
 
   /** Best-effort restoration of placeholder tokens found in AI response text. */
   restore(text: string): string {
-    if (this.byPlaceholder.size === 0) return text;
-    let result = text;
-    for (const entry of this.byPlaceholder.values()) {
-      result = result.split(entry.placeholder).join(entry.original);
+    return this.restoreSegments(text)
+      .map((seg) => ("original" in seg ? seg.original : seg.text))
+      .join("");
+  }
+
+  /**
+   * Same restoration as `restore()`, but split into ordered segments
+   * instead of joined into one string, so a caller can tell which parts of
+   * the result were substituted back in versus part of the AI's own text
+   * (used to visually mark restored values in the response — see
+   * responseRestorer.ts — rather than silently swapping them back in a way
+   * indistinguishable from the AI having said them itself).
+   */
+  restoreSegments(text: string): ({ text: string } | { placeholder: string; original: string })[] {
+    if (this.byPlaceholder.size === 0) return [{ text }];
+
+    const pattern = [...this.byPlaceholder.keys()].map(escapeRegExp).join("|");
+    const regex = new RegExp(`(${pattern})`, "g");
+
+    const segments: ({ text: string } | { placeholder: string; original: string })[] = [];
+    let lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(text)) !== null) {
+      if (m.index > lastIndex) segments.push({ text: text.slice(lastIndex, m.index) });
+      const placeholder = m[0];
+      const entry = this.byPlaceholder.get(placeholder);
+      if (entry) segments.push({ placeholder, original: entry.original });
+      lastIndex = m.index + placeholder.length;
     }
-    return result;
+    if (lastIndex < text.length) segments.push({ text: text.slice(lastIndex) });
+    return segments;
   }
 
   get mappingSize(): number {
@@ -72,4 +97,8 @@ export class PlaceholderSession {
     this.byPlaceholder.clear();
     this.byOriginal.clear();
   }
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

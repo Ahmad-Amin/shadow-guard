@@ -5,6 +5,7 @@ import { getCachedEntitlement } from "../license/license";
 import type { ActivityEvent, Category, DetectionResult, PolicyAction } from "../types";
 import type { SiteAdapter } from "./adapters/types";
 import { resolveEffectiveAction } from "./policyResolution";
+import { suppressRestorationBriefly } from "./responseRestorer";
 import { showReviewPanel } from "./ui/reviewPanel";
 import { showToast } from "./ui/toast";
 
@@ -91,7 +92,17 @@ export function attachInterception(adapter: SiteAdapter, session: PlaceholderSes
 
     const settings = getCachedSettings();
     const detection = runDetection(text, settings.customTerms);
-    if (detection.matches.length === 0) return null;
+    if (detection.matches.length === 0) {
+      // Nothing new to flag — but if this text still carries placeholders
+      // from an earlier redaction in this session (the normal case right
+      // after a REDACT round-trip: the user re-presses Enter on the
+      // now-clean, placeholder-containing draft), it's about to be sent
+      // untouched. The instant it renders as this tab's own message
+      // bubble, watchForResponseRestoration would otherwise "restore" it
+      // back to the real value in the transcript — see responseRestorer.ts.
+      if (session.restore(text) !== text) suppressRestorationBriefly(1200);
+      return null;
+    }
 
     const effectiveAction = resolveEffectiveAction(detection, settings.policy);
     if (effectiveAction === "ALLOW") return null;

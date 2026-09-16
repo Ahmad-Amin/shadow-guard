@@ -16,6 +16,7 @@ if (!app) throw new Error("options root missing");
 
 const CATEGORY_LABELS: Record<Category, string> = {
   SECRET: "Secrets & credentials",
+  POSSIBLE_SECRET: "Possible secrets (unrecognized format)",
   EMAIL: "Email addresses",
   PHONE: "Phone numbers",
   CREDIT_CARD: "Credit card numbers",
