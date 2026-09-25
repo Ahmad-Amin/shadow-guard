@@ -10,14 +10,20 @@ import { showReviewPanel } from "./ui/reviewPanel";
 import { showToast } from "./ui/toast";
 
 export function attachInterception(adapter: SiteAdapter, session: PlaceholderSession): () => void {
-  let allowNextSubmit = false;
+  // Scoped to the exact text it was granted for — not just "the next send,
+  // whatever it is". An unscoped bypass silently waived detection on any
+  // unrelated message sent within the TTL window (e.g. testing several
+  // sentences quickly after clicking "Send anyway" on an earlier one), with
+  // zero toast/feedback, which looked like ShadowGuard had randomly stopped
+  // working.
+  let allowedBypassText: string | null = null;
   let bypassTimer: ReturnType<typeof setTimeout> | null = null;
 
   const handleKeydown = (e: KeyboardEvent) => {
     if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
     const input = adapter.findInput();
     if (!input || !isEventWithin(e, input)) return;
-    if (consumeBypass()) return;
+    if (consumeBypass(adapter.getText(input))) return;
 
     const outcome = evaluate(input);
     if (outcome === null) return; // nothing to flag — let the original event through untouched
@@ -25,7 +31,7 @@ export function attachInterception(adapter: SiteAdapter, session: PlaceholderSes
     e.preventDefault();
     e.stopImmediatePropagation();
     handleInterception(input, outcome, () => {
-      grantBypass(5000);
+      grantBypass(5000, outcome.text);
       input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
     });
   };
@@ -35,7 +41,7 @@ export function attachInterception(adapter: SiteAdapter, session: PlaceholderSes
     if (!input) return;
     const sendButton = adapter.findSendButton(input);
     if (!sendButton || !isEventWithin(e, sendButton)) return;
-    if (consumeBypass()) return;
+    if (consumeBypass(adapter.getText(input))) return;
 
     const outcome = evaluate(input);
     if (outcome === null) return;
@@ -43,29 +49,28 @@ export function attachInterception(adapter: SiteAdapter, session: PlaceholderSes
     e.preventDefault();
     e.stopImmediatePropagation();
     handleInterception(input, outcome, () => {
-      grantBypass(5000);
+      grantBypass(5000, outcome.text);
       sendButton.click();
     });
   };
 
-  // Arms a one-shot bypass for the next Enter/Send attempt, auto-expiring
-  // after `ttlMs` if never consumed. Used both for the immediate synthetic
-  // re-dispatch after a WARN "Send Anyway" decision, and for the REDACT
-  // toast's "Send anyway" action, where the user's *own* later keypress is
-  // what actually submits — the TTL keeps a clicked-but-never-sent bypass
-  // from silently waiving detection on unrelated text typed much later.
-  function grantBypass(ttlMs: number): void {
-    allowNextSubmit = true;
+  // Arms a one-shot bypass for the next Enter/Send of exactly `text`,
+  // auto-expiring after `ttlMs` if never consumed. Used both for the
+  // immediate synthetic re-dispatch after a WARN "Send Anyway" decision,
+  // and for the REDACT toast's "Send anyway" action, where the user's own
+  // later keypress is what actually submits.
+  function grantBypass(ttlMs: number, text: string): void {
+    allowedBypassText = text;
     if (bypassTimer) clearTimeout(bypassTimer);
     bypassTimer = setTimeout(() => {
-      allowNextSubmit = false;
+      allowedBypassText = null;
       bypassTimer = null;
     }, ttlMs);
   }
 
-  function consumeBypass(): boolean {
-    if (!allowNextSubmit) return false;
-    allowNextSubmit = false;
+  function consumeBypass(currentText: string): boolean {
+    if (allowedBypassText === null || currentText !== allowedBypassText) return false;
+    allowedBypassText = null;
     if (bypassTimer) {
       clearTimeout(bypassTimer);
       bypassTimer = null;
@@ -137,7 +142,7 @@ export function attachInterception(adapter: SiteAdapter, session: PlaceholderSes
             // untouched — it does NOT auto-submit for them, matching
             // REDACT's "never auto-submit" rule.
             adapter.setText(input, text);
-            grantBypass(15000);
+            grantBypass(15000, text);
             showToast("Original text restored — press Enter/Send within 15s to submit it as-is.", 4000);
             void logActivity(adapter, categories, effectiveAction, true);
           },
